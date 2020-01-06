@@ -7,6 +7,11 @@
 #################################################################################################################################################################
 
 
+# Here, specify whether you want to run in parallel with multiple cores
+# Note that Windows does not support parallel execution with mcmapply()
+# Default is 1 core (not parallel) but you can increase the number.
+n_cores <- 1 
+
 halvingfoodwaste_path <- getwd()
 
 #########################################  
@@ -99,12 +104,7 @@ reduction_rate_grid <- expand.grid(L1 = rate_levels, L2 = rate_levels, L3 = rate
 # Create list from grid
 reduction_rate_grid_list <- setNames(split(reduction_rate_grid, seq(nrow(reduction_rate_grid))), rownames(reduction_rate_grid))
 
-# If desired you can run in parallel with mcmapply by uncommenting the following line and commenting the mapply() call
-# Note: not supported on Windows
-# eeio_result_grid <- mcmapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), mc.cores = 4, SIMPLIFY = FALSE)
-
-# Run serially with mapply
-eeio_result_grid <- mapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), SIMPLIFY = FALSE)
+eeio_result_grid <- mcmapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), mc.cores = n_cores, SIMPLIFY = FALSE)
 
 eeio_result_grid_df <- bind_rows(eeio_result_grid)
 
@@ -175,8 +175,9 @@ sensitivity_arguments <- list(reduction_rate = map(baseline_waste_rate_combos, 1
                               proportion_food = map(proportion_food_combos, 2),
                               scenario_id = as.list(paste0('scenario', 1:length(baseline_waste_rate_combos))))
 
-# Run uncertainty analysis in parallel with mcmapply
-eeio_result_grid_sensitivity <- with(sensitivity_arguments, mcmapply(get_reduction_from_list, reduction_rate, baseline_waste_rate, proportion_food, scenario_id, mc.cores = 4, SIMPLIFY = FALSE))
+
+# Run uncertainty analysis, either serially or in parallel.
+eeio_result_grid_sensitivity <- with(sensitivity_arguments, mcmapply(get_reduction_from_list, reduction_rate, baseline_waste_rate, proportion_food, scenario_id, mc.cores = n_cores, SIMPLIFY = FALSE))
 
 # Match output with arguments to get confidence intervals
 grid_sensitivity_df <- map2_dfr(sensitivity_arguments$reduction_rate, eeio_result_grid_sensitivity, ~ data.frame(t(.x), .y))
@@ -206,8 +207,9 @@ commodities <- names(fao_category_weights)
 # All combinations of category x commodity
 scenarios <- expand.grid(category = categories, commodity = commodities, stringsAsFactors = FALSE)
 
-# Run in parallel across all combinations
-results_by_commodity <- mcmapply(find_best_pathway, category = scenarios$category, commodity = scenarios$commodity, mc.cores = 4, SIMPLIFY = FALSE)
+# Run across all combinations, either serially or in parallel.
+results_by_commodity <- mcmapply(find_best_pathway, category = scenarios$category, commodity = scenarios$commodity, mc.cores = n_cores, SIMPLIFY = FALSE)
+
 results_by_commodity <- tibble(category = scenarios$category, 
                                commodity = scenarios$commodity, 
                                best_pathway = map(results_by_commodity, 'best_pathway'), 
