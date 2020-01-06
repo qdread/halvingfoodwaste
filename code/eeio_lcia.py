@@ -13,6 +13,9 @@ Created on Fri Dec  7 09:56:30 2018
 # 2. Final demand vector (unnamed numeric)
 # 3. Sector ID vector corresponding to demand vector (character vector)
 
+import os
+os.chdir('USEEIO')
+
 import useeiopy
 import iomb
 

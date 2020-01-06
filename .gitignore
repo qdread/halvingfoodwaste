@@ -47,3 +47,4 @@ USEEIO/useeiopy/_rslurm*
 *.pyc
 USEEIO/build/
 USEEIO/useeiopy/aux
+.Rproj.user

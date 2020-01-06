@@ -6,35 +6,27 @@
 # Contact: qread@sesync.org                                                                                                                                     #
 #################################################################################################################################################################
 
+
+halvingfoodwaste_path <- getwd()
+
 #########################################  
-# Source scripts needed to run analysis #
+# Load packages needed to run analysis  #
 #########################################
 
 library(tidyverse)
 library(reticulate)
 library(parallel)
 
-# To reproduce this analysis, it is necessary to use a modified version of the USEEIO model (included with this repo)
-# Source R script used to build USEEIO model for each scenario.
-source('USEEIO/R/Model Build Scripts/USEEIO2012_buildfunction.R')
-model_build_path <- file.path('USEEIO/useeiopy/Model Builds')
-
-# Source Python script to call the built EEIO models can be called from R
-source_python('code/eeio_lcia.py')
-
-# Source other R scripts needed to carry out analysis.
-source('code/R_functions.R')
-
 ########################
 # Load raw data into R #
 ########################
 
 # Food loss and waste rates by food type and food supply chain stage
-flw_rates <- read.csv('flw_rates.csv', stringsAsFactors = FALSE)
+flw_rates <- read.csv('data/flw_rates.csv', stringsAsFactors = FALSE)
 
 # BEA industries from input-output table with the proportion of each industry assigned to the food supply chain,
 # and within each industry the proportion assigned to each food commodity group
-industry_proportions <- read.csv('industry_proportions.csv', stringsAsFactors = FALSE) %>%
+industry_proportions <- read.csv('data/industry_proportions.csv', stringsAsFactors = FALSE) %>%
   filter(food_system %in% c('partial', 'y')) %>%
   arrange(stage) %>%
   mutate(stage_code = case_when(
@@ -46,19 +38,34 @@ industry_proportions <- read.csv('industry_proportions.csv', stringsAsFactors = 
   ))
 
 # Make and use tables used to build the EEIO model, with 2012 values mapped to the 2007 BEA schema
-M <- read.csv('make2012.csv', row.names = 1, check.names = FALSE)
-U <- read.csv('use2012.csv', row.names = 1, check.names = FALSE)
+M <- read.csv('data/make2012.csv', row.names = 1, check.names = FALSE)
+U <- read.csv('data/use2012.csv', row.names = 1, check.names = FALSE)
 
 # Table to correct the formatting of the BEA codes
-bea_code_formats <- read.csv('industry_codes.csv', stringsAsFactors = FALSE)
+bea_code_formats <- read.csv('data/industry_codes.csv', stringsAsFactors = FALSE)
+
+#########################################  
+# Source scripts needed to run analysis #
+#########################################
+
+# To reproduce this analysis, it is necessary to use a modified version of the USEEIO model (included with this repo)
+# Source R script used to build USEEIO model for each scenario.
+source('USEEIO/R/Model Build Scripts/USEEIO2012_buildfunction.R')
+model_build_path <- file.path('USEEIO/useeiopy/Model Builds')
+
+# Source other R scripts needed to carry out analysis.
+source('code/R_functions.R')
+
+# Source Python script to call the built EEIO models can be called from R (note: this changes working directory)
+source_python('code/eeio_lcia.py')
 
 ############################################################################
 # Create vectors of industry names and industry codes in different formats #
 ############################################################################
 
-sector_stage_codes <- naics_foodsystem$stage_code
-sector_long_names <- all_codes$sector_desc_drc[match(naics_foodsystem$BEA_389_code, all_codes$sector_code_uppercase)]
-sector_short_names <- naics_foodsystem$BEA_389_code
+sector_stage_codes <- industry_proportions$stage_code
+sector_long_names <- bea_code_formats$sector_desc_drc[match(industry_proportions$BEA_389_code, bea_code_formats$sector_code_uppercase)]
+sector_short_names <- industry_proportions$BEA_389_code
 final_demand_sector_codes <- sector_stage_codes
 final_demand_sector_codes[final_demand_sector_codes %in% c('L1', 'L2', 'L3')] <- 'L5'
 
@@ -92,22 +99,19 @@ reduction_rate_grid <- expand.grid(L1 = rate_levels, L2 = rate_levels, L3 = rate
 # Create list from grid
 reduction_rate_grid_list <- setNames(split(reduction_rate_grid, seq(nrow(reduction_rate_grid))), rownames(reduction_rate_grid))
 
-# Reducing final demand in stages 1-3 modifies inputs to industry columns in classes 1-3.
-# Reducing final demand in stages 4a and 4b modifies inputs to industry columns and reduction to the corresponding rows of PCE final demand (4a and 4b respectively)
-# Reducing final demand in stage 5 does not modify any inputs to industry columns. It modifies PCE final demand in classes 1-3 but not 4a or 4b.
+# If desired you can run in parallel with mcmapply by uncommenting the following line and commenting the mapply() call
+# Note: not supported on Windows
+# eeio_result_grid <- mcmapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), mc.cores = 4, SIMPLIFY = FALSE)
 
-# For each combination scenario, put together a vector of demand reduction factors for intermediate demand with values and names equal to the column names of the DRC matrix
-# Also put together a vector of demand reduction factors for final demand with values and names equal to the row names of the DRC matrix. This will modify the PCE column of final demand.
+# Run serially with mapply
+eeio_result_grid <- mapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), SIMPLIFY = FALSE)
 
-# Run in parallel with mcmapply (if desired)
-
-eeio_result_grid <- mcmapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), mc.cores = 4, SIMPLIFY = FALSE)
 eeio_result_grid_df <- bind_rows(eeio_result_grid)
 
 # Put output into data frame and write to CSV.
 eeio_result_grid_df <- cbind(reduction_rate_grid[rep(1:nrow(reduction_rate_grid), each = 21), ], eeio_result_grid_df)
 
-write.csv(eeio_result_grid_df, file = 'sixstage_scenario_grid_lcia_results.csv', row.names = FALSE)
+write.csv(eeio_result_grid_df, file = file.path(halvingfoodwaste_path, 'output/sixstage_scenario_grid_lcia_results.csv'), row.names = FALSE)
 
 ###########################
 # Do uncertainty analysis #
@@ -182,14 +186,14 @@ grid_sensitivity_CIs <- grid_sensitivity_df %>%
   do(quantile(.$value, probs = c(0.025, 0.25, 0.5, 0.75, 0.975)) %>% t %>% as.data.frame %>% setNames(c('q025', 'q25', 'q50', 'q75', 'q975')))
 
 # Write confidence intervals to CSV
-write.csv(grid_sensitivity_CIs, 'sensitivity_grid_CIs.csv', row.names = FALSE)
+write.csv(grid_sensitivity_CIs, file.path(halvingfoodwaste_path, 'output/sensitivity_grid_CIs.csv'), row.names = FALSE)
 
 ################################################################################
 # Calculate environmental impact reductions for food-specific waste reductions #
 ################################################################################
 
 # Get waste rates by sector x commodity
-waste_rate_bycommodityxsector <- waste_rate_bysector * fao_category_weights
+waste_rate_bycommodityxsector <- waste_rate_bysector * food_category_weights
 
 # Specify environmental impact categories and food commodity groups to minimize
 
@@ -225,4 +229,4 @@ results_by_commodity_df <- results_by_commodity %>%
   rename(baseline_impact = value) %>%
   mutate(impact_norm = impact / baseline_impact)
   
-write.csv(results_by_commodity_df, 'bestpathway_bycommodity.csv', row.names = FALSE)
+write.csv(results_by_commodity_df, file.path(halvingfoodwaste_path, 'output/bestpathway_bycommodity.csv'), row.names = FALSE)

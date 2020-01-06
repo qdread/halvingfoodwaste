@@ -1,13 +1,13 @@
 # halvingfoodwaste
 Code and data to reproduce analysis in Read et al. 2019 article in Science of the Total Environment
 
-Read, Q. D., S. Brown, A. D. Cuéllar, S. M. Finn, J. A. Gephart, L. T. Marston, E. Meyer, K. A. Weitz, and M. K. Muth. 2019. Assessing the environmental impacts of halving food loss and waste along the food supply chain. *Science of the Total Environment.* [https://doi.org/10.1016/j.scitotenv.2019.136255].
+Read, Q. D., S. Brown, A. D. Cuéllar, S. M. Finn, J. A. Gephart, L. T. Marston, E. Meyer, K. A. Weitz, and M. K. Muth. 2019. Assessing the environmental impacts of halving food loss and waste along the food supply chain. *Science of the Total Environment.* https://doi.org/10.1016/j.scitotenv.2019.136255.
 
 ## Contents
 
 This repository contains all data and code required to reproduce the analyses in the article published in *Science of the Total Environment*, excluding some initial data-cleaning steps.
 
-It includes a modified version of the USEEIO model, version 1.1. Active development of USEEIO has moved to the [useeior](https://github.com/USEPA/useeior/) package. The 
+It includes a modified version of the USEEIO model, version 1.1. Active development of USEEIO has moved to the [useeior](https://github.com/USEPA/useeior/) package. The included version of USEEIO was modified from [this release](https://github.com/USEPA/USEEIO/releases/tag/v0.2-alpha).
 
 ## Instructions
 
