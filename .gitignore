@@ -37,3 +37,13 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# USEEIO-specific files
+USEEIO.Rproj
+USEEIO/useeiopy.egg-info/
+
+USEEIO/useeiopy/Model\ Builds/*
+USEEIO/useeiopy/_rslurm*
+*.pyc
+USEEIO/build/
+USEEIO/useeiopy/aux
