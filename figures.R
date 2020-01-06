@@ -5,21 +5,25 @@
 # Contact: qread@sesync.org                                                                                                                                     #
 #################################################################################################################################################################
 
+# ===========================================================
+# Load all packaages and data to create Figures 2, 3, and 4 =
+# ===========================================================
+
 library(tidyverse)
 library(units)
 library(gridExtra)
 library(ggrepel)
+library(cowplot)
+
+grid_result <- read.csv('sixstage_scenario_grid_lcia_results.csv', stringsAsFactors = FALSE)
+base_and_nowaste <- grid_result %>%
+  filter(rowSums(.[,1:6]) %in% c(0, 6))
+grid_sensitivity_CIs <- read.csv('sensitivity_grid_CIs.csv', stringsAsFactors = FALSE)
+results_by_commodity_df <- read.csv('bestpathway_bycommodity.csv', stringsAsFactors = FALSE)
 
 ############
 # Figure 2 #
 ############
-
-stage_full_names <- c('production', 'processing', 'retail', 'consumption: food service', 'consumption: institutional', 'consumption: household')
-
-stage_full_names_lookup <- c(none = '', L1 = 'production', L2 = 'processing', L3 = 'retail', L4a = 'consumption:\nfood service', L4b = 'consumption:\ninstitutional', L5 = 'consumption:\nhousehold')
-
-base_and_nowaste <- read.csv(file.path(fp_output, 'sixstage_scenario_grid_lcia_results.csv'), stringsAsFactors = FALSE) %>%
-  filter(rowSums(.[,1:6]) %in% c(0, 6))
 
 waste_impacts <- base_and_nowaste %>%
   mutate(scenario = if_else(rowSums(.[,1:6]) == 0, 'baseline', 'zero_waste')) %>%
@@ -81,9 +85,6 @@ grid.arrange(grobs = waste_plots$p, nrow = 1)
 
 stage_full_names <- c('production', 'processing', 'retail', 'consumption: foodservice', 'consumption: institutional', 'consumption: household')
 stage_full_names_lookup <- c(none = '', L1 = 'production', L2 = 'processing', L3 = 'retail', L4a = 'consumption:\nfoodservice', L4b = 'consumption:\ninstitutional', L5 = 'consumption:\nhousehold')
-
-grid_result <- read.csv('sixstage_scenario_grid_lcia_results.csv', stringsAsFactors = FALSE)
-grid_sensitivity_CIs <- read.csv('sensitivity_grid_CIs.csv', stringsAsFactors = FALSE)
 
 # Calculate sequences for each iteration of uncertainty analysis.
 create_sequence <- function(dat, value_id, proportion) {
@@ -170,8 +171,6 @@ ggplot(facetplotdat %>% mutate(letter = letters[1:5][impact_category]), aes(x = 
 # Figure 4 #
 ############
 
-results_by_commodity_df <- read.csv('bestpathway_bycommodity.csv', stringsAsFactors = FALSE)
-
 # Map stage, category, and food commodity group labels to more descriptive labels
 stage_full_names_lookup <- c(none = '', L1 = 'production', L2 = 'processing', L3 = 'retail', L4a = 'foodservice', L4b = 'institutions', L5 = 'households')
 categories <- c("impact potential/gcc/kg co2 eq", "resource use/land/m2*yr", "resource use/watr/m3", "resource use/enrg/mj", "impact potential/eutr/kg n eq")
@@ -247,8 +246,6 @@ p_energy <- plot_impactaverted(percapita_results, 'energy', '(MJ~y^-1)') + annot
 p_eutr <- plot_impactaverted(percapita_results, 'eutrophication', '(kg~N~eq.~y^-1)') + annotate('text',x=-Inf,y=Inf,hjust=-0.2,vjust=1.2,label='b', size = lsize) + ggtitle('eutrophication potential')
 
 # Make a legend for all the plots.
-library(cowplot)
-
 leg_plot <- ggplot(percapita_results %>% filter(commodity %in% alltop5), aes(x=1, y=1, color=commodity)) +
   geom_point() +
   theme_bw() +
