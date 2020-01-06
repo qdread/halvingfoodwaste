@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: useeiopy
+Version: 0.1
+Summary: Python 3.x package for assembling and calculating environmentally-extended input-output models from USEEIO Modeling Framework model components.
+Home-page: http://www.github.com/usepa/useeio
+Author: Wesley Ingwersen
+Author-email: ingwersen.wesley@epa.gov
+License: CC0
+Description: UNKNOWN
+Platform: UNKNOWN
