@@ -19,6 +19,7 @@
 
 # RStudio files
 .Rproj.user/
+.Rproj.user
 
 # produced vignettes
 vignettes/*.html
@@ -42,9 +43,9 @@ vignettes/*.pdf
 USEEIO.Rproj
 USEEIO/useeiopy.egg-info/
 
-USEEIO/useeiopy/Model\ Builds/*
+USEEIO/useeiopy/Model\ Builds/scenario_*
 USEEIO/useeiopy/_rslurm*
 *.pyc
 USEEIO/build/
 USEEIO/useeiopy/aux
-.Rproj.user
+
