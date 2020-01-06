@@ -56,7 +56,7 @@ bea_code_formats <- read.csv('data/industry_codes.csv', stringsAsFactors = FALSE
 # To reproduce this analysis, it is necessary to use a modified version of the USEEIO model (included with this repo)
 # Source R script used to build USEEIO model for each scenario.
 source('USEEIO/R/Model Build Scripts/USEEIO2012_buildfunction.R')
-model_build_path <- file.path('USEEIO/useeiopy/Model Builds')
+model_build_path <- file.path(halvingfoodwaste_path, 'USEEIO/useeiopy/Model Builds')
 
 # Source other R scripts needed to carry out analysis.
 source('code/R_functions.R')
@@ -104,6 +104,7 @@ reduction_rate_grid <- expand.grid(L1 = rate_levels, L2 = rate_levels, L3 = rate
 # Create list from grid
 reduction_rate_grid_list <- setNames(split(reduction_rate_grid, seq(nrow(reduction_rate_grid))), rownames(reduction_rate_grid))
 
+# Run analysis either serially or in parallel depending on value of n_cores
 eeio_result_grid <- mcmapply(get_reduction, reduction_by_stage = reduction_rate_grid_list, scenario_id = 1:length(reduction_rate_grid_list), mc.cores = n_cores, SIMPLIFY = FALSE)
 
 eeio_result_grid_df <- bind_rows(eeio_result_grid)
@@ -170,24 +171,24 @@ baseline_waste_rate_list <- map(waste_rate_bysector_list, ~ rowSums(.x * fao_cat
 baseline_waste_rate_combos <- cross2(reduction_rate_grid_list, baseline_waste_rate_list)
 proportion_food_combos <- cross2(reduction_rate_grid_list, proportion_food_list)
 																						 
-sensitivity_arguments <- list(reduction_rate = map(baseline_waste_rate_combos, 1),
+uncertainty_arguments <- list(reduction_rate = map(baseline_waste_rate_combos, 1),
                               baseline_waste_rate = map(baseline_waste_rate_combos, 2),
                               proportion_food = map(proportion_food_combos, 2),
                               scenario_id = as.list(paste0('scenario', 1:length(baseline_waste_rate_combos))))
 
 
 # Run uncertainty analysis, either serially or in parallel.
-eeio_result_grid_sensitivity <- with(sensitivity_arguments, mcmapply(get_reduction_from_list, reduction_rate, baseline_waste_rate, proportion_food, scenario_id, mc.cores = n_cores, SIMPLIFY = FALSE))
+eeio_result_grid_uncertainty <- with(uncertainty_arguments, mcmapply(get_reduction_from_list, reduction_rate, baseline_waste_rate, proportion_food, scenario_id, mc.cores = n_cores, SIMPLIFY = FALSE))
 
 # Match output with arguments to get confidence intervals
-grid_sensitivity_df <- map2_dfr(sensitivity_arguments$reduction_rate, eeio_result_grid_sensitivity, ~ data.frame(t(.x), .y))
+grid_uncertainty_df <- map2_dfr(uncertainty_arguments$reduction_rate, eeio_result_grid_uncertainty, ~ data.frame(t(.x), .y))
 
-grid_sensitivity_CIs <- grid_sensitivity_df %>%
+grid_uncertainty_CIs <- grid_uncertainty_df %>%
   group_by(L1, L2, L3, L4a, L4b, L5, impact_category) %>%
   do(quantile(.$value, probs = c(0.025, 0.25, 0.5, 0.75, 0.975)) %>% t %>% as.data.frame %>% setNames(c('q025', 'q25', 'q50', 'q75', 'q975')))
 
 # Write confidence intervals to CSV
-write.csv(grid_sensitivity_CIs, file.path(halvingfoodwaste_path, 'output/sensitivity_grid_CIs.csv'), row.names = FALSE)
+write.csv(grid_uncertainty_CIs, file.path(halvingfoodwaste_path, 'output/uncertainty_grid_CIs.csv'), row.names = FALSE)
 
 ################################################################################
 # Calculate environmental impact reductions for food-specific waste reductions #

@@ -15,11 +15,11 @@ library(gridExtra)
 library(ggrepel)
 library(cowplot)
 
-grid_result <- read.csv('sixstage_scenario_grid_lcia_results.csv', stringsAsFactors = FALSE)
+grid_result <- read.csv('output/sixstage_scenario_grid_lcia_results.csv', stringsAsFactors = FALSE)
 base_and_nowaste <- grid_result %>%
   filter(rowSums(.[,1:6]) %in% c(0, 6))
-grid_sensitivity_CIs <- read.csv('sensitivity_grid_CIs.csv', stringsAsFactors = FALSE)
-results_by_commodity_df <- read.csv('bestpathway_bycommodity.csv', stringsAsFactors = FALSE)
+grid_uncertainty_CIs <- read.csv('output/uncertainty_grid_CIs.csv', stringsAsFactors = FALSE)
+results_by_commodity_df <- read.csv('output/bestpathway_bycommodity.csv', stringsAsFactors = FALSE)
 
 ############
 # Figure 2 #
@@ -107,7 +107,7 @@ trueseq <- grid_result %>%
   do(create_sequence(., value, 0.5))
 
 # Match the true sequence values with the error bar values.
-trueseq_withcis <- trueseq %>% left_join(grid_sensitivity_CIs)
+trueseq_withcis <- trueseq %>% left_join(grid_uncertainty_CIs)
 
 # Function to create reduction plot with error bars
 reduction_plot_with_errorbars <- function(sequence, yval, yminval, ymaxval, plot_title, plot_subtitle) {

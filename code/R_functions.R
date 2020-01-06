@@ -16,9 +16,9 @@ get_eeio_result <- function(c_factor, r_factor, c_names, r_names, i = 'no_name')
   # Step 3. Build USEEIO with specifications for modifying intermediate and final demand.
   build_USEEIO(outputfolder = file.path(model_build_path, paste0('scenario_', i)),
                model = paste0('scenario_', i),
-               usetablefile = file.path(fp_bea, 'use2012.csv'),
-               maketablefile = file.path(fp_bea, 'make2012.csv'),
-               code_path = fp_useeio,
+               usetablefile = file.path(halvingfoodwaste_path, 'data/use2012.csv'),
+               maketablefile = file.path(halvingfoodwaste_path, 'data/make2012.csv'),
+               code_path = file.path(halvingfoodwaste_path, 'USEEIO'),
                intermediate_columns_modify = c_names,
                intermediate_change_factor = c_factor,
                final_rows_modify = r_names,
@@ -28,9 +28,9 @@ get_eeio_result <- function(c_factor, r_factor, c_names, r_names, i = 'no_name')
   # Step 4. Extract demand vector for food system from scenario.
   # Join this with the food system proportions and with the correct demand codes (full description names)
   all_final_demand <- read.csv(file.path(model_build_path, paste0('scenario_', i), paste0('scenario_', i, '_FinalDemand.csv')), stringsAsFactors = FALSE) %>%
-    left_join(naics_foodsystem, by = c('BEA_389_code', 'BEA_389_def')) %>% 
+    left_join(industry_proportions, by = c('BEA_389_code', 'BEA_389_def')) %>% 
     filter(!is.na(proportion_food)) %>%
-    left_join(all_codes, by = c('BEA_389_code' = 'sector_code_uppercase'))
+    left_join(bea_code_formats, by = c('BEA_389_code' = 'sector_code_uppercase'))
   # Convert demand vector to separate list of codes and values
   final_demand_list <- with(all_final_demand, list(codes = as.list(sector_desc_drc), values = as.list(X2012_US_Consumption * proportion_food)))
   # Step 5. Run the model!
@@ -49,8 +49,8 @@ get_eeio_result <- function(c_factor, r_factor, c_names, r_names, i = 'no_name')
 # Wrapper function so that get_eeio_result() is compatible with parallel::mcmapply()
 
 get_reduction <- function(reduction_by_stage, scenario_id) {
-  intermediate_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[sector_stage_codes], naics_foodsystem$proportion_food))
-  final_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[final_demand_sector_codes], naics_foodsystem$proportion_food))
+  intermediate_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[sector_stage_codes], industry_proportions$proportion_food))
+  final_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[final_demand_sector_codes], industry_proportions$proportion_food))
   get_eeio_result(c_factor = intermediate_demand_change_factors,
                   c_names = sector_long_names,
                   r_factor = final_demand_change_factors,
@@ -64,14 +64,14 @@ get_reduction <- function(reduction_by_stage, scenario_id) {
 
 # Function to get results from EEIO with different values from the uncertainty analysis.
 
-get_eeio_result_uncertainty <- function(c_factor, r_factor, c_names, r_names, i = 'no_name', crosswalk = naics_foodsystem) {
+get_eeio_result_uncertainty <- function(c_factor, r_factor, c_names, r_names, i = 'no_name', crosswalk = industry_proportions) {
   
   # Build USEEIO with specifications for modifying intermediate and final demand.
   build_USEEIO(outputfolder = file.path(model_build_path, paste0('scenario_', i)),
                model = paste0('scenario_', i),
-               usetablefile = file.path(fp_bea, 'use2012.csv'),
-               maketablefile = file.path(fp_bea, 'make2012.csv'),
-               code_path = fp_useeio,
+               usetablefile = file.path(halvingfoodwaste_path, 'data/use2012.csv'),
+               maketablefile = file.path(halvingfoodwaste_path, 'data/make2012.csv'),
+               code_path = file.path(halvingfoodwaste_path, 'USEEIO'),
                intermediate_columns_modify = c_names,
                intermediate_change_factor = c_factor,
                final_rows_modify = r_names,
@@ -83,7 +83,7 @@ get_eeio_result_uncertainty <- function(c_factor, r_factor, c_names, r_names, i 
   all_final_demand <- read.csv(file.path(model_build_path, paste0('scenario_', i), paste0('scenario_', i, '_FinalDemand.csv')), stringsAsFactors = FALSE) %>%
     left_join(crosswalk, by = c('BEA_389_code', 'BEA_389_def')) %>% 
     filter(!is.na(proportion_food)) %>%
-    left_join(all_codes, by = c('BEA_389_code' = 'sector_code_uppercase'))
+    left_join(bea_code_formats, by = c('BEA_389_code' = 'sector_code_uppercase'))
   # Convert demand vector to separate list of codes and values
   final_demand_list <- with(all_final_demand, list(codes = as.list(sector_desc_drc), values = as.list(X2012_US_Consumption * proportion_food)))
   # Step 5. Run the model!
@@ -109,7 +109,7 @@ get_reduction_from_list <- function(reduction_rate, baseline_waste_rate, proport
                               r_factor = final_demand_change_factors,
                               r_names = sector_short_names,
                               i = scenario_id,
-                              crosswalk = naics_foodsystem %>% mutate(proportion_food = !!proportion_food))
+                              crosswalk = industry_proportions %>% mutate(proportion_food = !!proportion_food))
 }
 
 # =====================
@@ -118,8 +118,8 @@ get_reduction_from_list <- function(reduction_rate, baseline_waste_rate, proport
 
 # Wrapper function to evaluate USEEIO for a single scenario, specifying the waste rate for the food commodity group we want.
 evaluate_scenario <- function(reduction_by_stage, baseline_waste_rate, scenario_id) {
-  intermediate_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[sector_stage_codes], naics_foodsystem$proportion_food))
-  final_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[final_demand_sector_codes], naics_foodsystem$proportion_food))
+  intermediate_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[sector_stage_codes], industry_proportions$proportion_food))
+  final_demand_change_factors <- as.numeric(demand_change_fn(baseline_waste_rate, reduction_by_stage[final_demand_sector_codes], industry_proportions$proportion_food))
   intermediate_demand_change_factors[is.na(intermediate_demand_change_factors)] <- 1
   final_demand_change_factors[is.na(final_demand_change_factors)] <- 1
   get_eeio_result(c_factor = intermediate_demand_change_factors,
