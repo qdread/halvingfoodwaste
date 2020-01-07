@@ -2,7 +2,8 @@
 # Read, Q. D., et al. 2019. Assessing the environmental impacts of halving food loss and waste along the food supply chain. Science of the Total Environment.   #
 #                                                                                                                                                               #
 # Code to reproduce all analyses in manuscript, beginning with cleaned data                                                                                     #
-# Last modified by QDR on 06 January 2020                                                                                                                       #
+# Last modified by QDR on 07 January 2020                                                                                                                       #
+# Tested with R version 3.6.2 on Windows and Linux                                                                                                              #                                                                                                   
 # Contact: qread@sesync.org                                                                                                                                     #
 #################################################################################################################################################################
 
