@@ -148,23 +148,23 @@ reduction_rate_grid_list <- split(reduction_rate_grid, seq(nrow(reduction_rate_g
   map(unlist)
 
 # Take random draws around mean for FAO waste rate
-faopct_list <- replicate(n_draws, baseline_rate_table_draw(w = faopct %>% select(loss_ag_production:loss_consumption), f = uncertainty_factor), simplify = FALSE)
+flw_rates_list <- replicate(n_draws, baseline_rate_table_draw(w = flw_rates %>% select(loss_ag_production:loss_consumption), f = uncertainty_factor), simplify = FALSE)
 
 # Get L1 - L4b values from each draw
-faopct_list <- map(faopct_list, ~ .x %>%
-                     as.data.frame %>%
-                     mutate(L1 = loss_ag_production,
-                            L2 = 1 - (1 - loss_handling_storage) * (1 - loss_processing_packaging),
-                            L3 = loss_distribution,
-                            L4a = loss_consumption,
-                            L4b = loss_consumption))
+flw_rates_list <- map(flw_rates_list, ~ .x %>%
+                        as.data.frame %>%
+                        mutate(L1 = loss_ag_production,
+                               L2 = 1 - (1 - loss_handling_storage) * (1 - loss_processing_packaging),
+                               L3 = loss_distribution,
+                               L4a = loss_consumption,
+                               L4b = loss_consumption))
 
 # Take random draws around mean for proportion food in each sector
-proportion_food_list <- replicate(n_draws, proportion_food_draw(p = naics_foodsystem$proportion_food, f = uncertainty_factor), simplify = FALSE)
+proportion_food_list <- replicate(n_draws, proportion_food_draw(p = industry_proportions$proportion_food, f = uncertainty_factor), simplify = FALSE)
 
-waste_rate_bysector_list <- map(faopct_list, ~ t(.x[, naics_foodsystem$stage_code]))
-fao_category_weights <- naics_foodsystem %>% select(cereals:beverages)
-baseline_waste_rate_list <- map(waste_rate_bysector_list, ~ rowSums(.x * fao_category_weights, na.rm = TRUE) / rowSums(fao_category_weights))
+waste_rate_bysector_list <- map(flw_rates_list, ~ t(.x[, industry_proportions$stage_code]))
+food_category_weights <- industry_proportions %>% select(cereals:beverages)
+baseline_waste_rate_list <- map(waste_rate_bysector_list, ~ rowSums(.x * food_category_weights, na.rm = TRUE) / rowSums(food_category_weights))
 
 # Cross the lists of reduction rates with the different parameters
 # Total number of models to run: number of draws * number of reduction rate combinations
@@ -203,7 +203,7 @@ waste_rate_bycommodityxsector <- waste_rate_bysector * food_category_weights
 categories <- c("impact potential/gcc/kg co2 eq", "resource use/land/m2*yr", "resource use/watr/m3", "resource use/enrg/mj", "impact potential/eutr/kg n eq")
 
 # Commodities to target
-commodities <- names(fao_category_weights)
+commodities <- names(food_category_weights)
 
 # All combinations of category x commodity
 scenarios <- expand.grid(category = categories, commodity = commodities, stringsAsFactors = FALSE)
